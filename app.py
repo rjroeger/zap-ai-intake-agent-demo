@@ -1,8 +1,12 @@
 import streamlit as st
+import openai
+``
 
 # ---------------------------
 # ZAP Check Fraud Intake AI Agent (Demo)
 # ---------------------------
+
+openai.api_key = st.secrets.get("OPENAI_API_KEY", "")
 
 def evaluate_intake(state):
     """
@@ -35,6 +39,49 @@ def evaluate_intake(state):
         state["escalation_ready"] = False
 
     return state
+
+def generate_ai_guidance(state):
+    """
+    Uses AI to explain intake gaps, suggest follow-up questions,
+    and assess escalation readiness in plain language.
+    """
+
+    prompt = f"""
+You are the ZAP Intake AI Agent.
+
+Your role is to assist an internal check fraud investigation team.
+
+DO NOT:
+- Provide legal advice
+- Make legal conclusions
+- Determine liability
+
+DO:
+- Identify missing or unclear intake details
+- Suggest specific follow-up questions
+- Explain risks of incomplete intake
+- Comment on escalation readiness based on provided state
+
+Current intake state:
+{state}
+
+Respond using the following structure:
+
+1. Intake Completeness Assessment
+2. Missing or Unclear Information
+3. Suggested Follow-Up Questions
+4. Escalation Readiness Commentary
+"""
+
+    response = openai.ChatCompletion.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": prompt}
+        ],
+        temperature=0.2,
+    )
+
+    return response.choices[0].message["content"]
 
 st.title("ZAP Check Fraud Intake AI Agent")
 
@@ -101,3 +148,12 @@ if st.session_state.case_state["escalation_ready"]:
         )
 
     st.subheader("Intake Assessment Results")
+
+st.subheader("AI Agent Guidance")
+
+    ai_response = generate_ai_guidance(
+        st.session_state.case_state
+    )
+
+    with st.container(border=True):
+    st.write(ai_response)
