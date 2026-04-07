@@ -1,1 +1,1 @@
-rom main import *
+from main import *
