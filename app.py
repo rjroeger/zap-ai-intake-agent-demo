@@ -1,13 +1,5 @@
 import streamlit as st
 import openai
-import traceback
-import sys
-
-try:
-    st.write("✅ App starting correctly...")
-except Exception:
-    st.text(traceback.format_exc())
-    sys.exit(1)
     
 # ---------------------------
 # ZAP Check Fraud Intake AI Agent (Demo)
@@ -135,7 +127,3 @@ if st.button("Evaluate Intake"):
 
         with st.container(border=True):
             st.write(generate_attorney_summary(st.session_state.case_state))
-
-except Exception:
-    st.error("❌ App crashed during startup")
-    st.text(traceback.format_exc())
