@@ -115,4 +115,3 @@ if st.button("Evaluate Intake"):
         st.success("🔒 Ready for attorney review.")
         with st.container(border=True):
             st.write(generate_attorney_summary(st.session_state.case_state))
-``
