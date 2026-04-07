@@ -8,8 +8,7 @@ import openai
 openai.api_key = st.secrets.get("OPENAI_API_KEY", "")
 
 if not openai.api_key:
-    st.error("OpenAI API key not configured. Add it in App Settings → Secrets.")
-    st.stop()
+    st.warning("⚠️ OpenAI API key not configured. AI features will be disabled.")
 
 
 def evaluate_intake(state):
@@ -33,42 +32,38 @@ def evaluate_intake(state):
 
 
 def generate_ai_guidance(state):
-    prompt = f"""
-You are the ZAP Intake AI Agent.
-
-Current intake:
-{state}
-
-Explain missing information, risks, and next steps.
-"""
-
-    response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
-        messages=[{"role": "system", "content": prompt}],
-        temperature=0.2,
-    )
-
-    return response.choices[0].message["content"]
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are the ZAP Intake AI Agent."},
+                {"role": "user", "content": str(state)},
+            ],
+            temperature=0.2,
+        )
+        return response.choices[0].message["content"]
+    except Exception as e:
+        return f"❌ OpenAI error:\n\n{e}"
 
 
 def generate_attorney_summary(state):
-    prompt = f"""
-You are the ZAP Attorney Preparation Agent.
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "Prepare a neutral attorney summary."},
+                {"role": "user", "content": str(state)},
+            ],
+            temperature=0.1,
+        )
+        return response.choices[0].message["content"]
+    except Exception as e:
+        return f"❌ OpenAI error:\n\n{e}"
 
-Prepare a factual, neutral summary for attorney review.
 
-Case state:
-{state}
-"""
-
-    response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
-        messages=[{"role": "system", "content": prompt}],
-        temperature=0.1,
-    )
-
-    return response.choices[0].message["content"]
-
+# ---------------------------
+# STREAMLIT UI
+# ---------------------------
 
 st.title("ZAP Check Fraud Intake AI Agent")
 
@@ -85,16 +80,24 @@ if "case_state" not in st.session_state:
 
 st.subheader("Fraud Intake")
 
-st.session_state.case_state["check_amount"] = st.number_input("Check Amount ($)", min_value=0)
+st.session_state.case_state["check_amount"] = st.number_input(
+    "Check Amount ($)", min_value=0
+)
 st.session_state.case_state["check_number"] = st.text_input("Check Number")
 st.session_state.case_state["payee"] = st.text_input("Payee Name")
-st.session_state.case_state["customer_affidavit"] = st.checkbox("Customer Affidavit Received")
-st.session_state.case_state["check_image"] = st.checkbox("Check Image Uploaded")
+st.session_state.case_state["customer_affidavit"] = st.checkbox(
+    "Customer Affidavit Received"
+)
+st.session_state.case_state["check_image"] = st.checkbox(
+    "Check Image Uploaded"
+)
 
 st.divider()
 
 if st.button("Evaluate Intake"):
-    st.session_state.case_state = evaluate_intake(st.session_state.case_state)
+    st.session_state.case_state = evaluate_intake(
+        st.session_state.case_state
+    )
 
     st.subheader("Intake Assessment")
 
@@ -106,12 +109,10 @@ if st.button("Evaluate Intake"):
         st.success("✅ Intake is complete.")
 
     st.subheader("AI Agent Guidance")
-    with st.container(border=True):
-        st.write(generate_ai_guidance(st.session_state.case_state))
+    st.write(generate_ai_guidance(st.session_state.case_state))
 
     if st.session_state.case_state["escalation_ready"]:
         st.divider()
         st.subheader("Attorney Escalation Package")
         st.success("🔒 Ready for attorney review.")
-        with st.container(border=True):
-            st.write(generate_attorney_summary(st.session_state.case_state))
+        st.write(generate_attorney_summary(st.session_state.case_state))
