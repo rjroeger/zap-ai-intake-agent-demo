@@ -92,4 +92,3 @@ if st.button("Evaluate Intake"):
         st.divider()
         st.subheader("Attorney Escalation Package")
         st.write(generate_attorney_summary(st.session_state.case_state))
-``
