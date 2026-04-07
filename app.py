@@ -1,6 +1,6 @@
 import streamlit as st
 import openai
-    
+
 # ---------------------------
 # ZAP Check Fraud Intake AI Agent (Demo)
 # ---------------------------
