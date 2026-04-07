@@ -83,6 +83,57 @@ Respond using the following structure:
 
     return response.choices[0].message["content"]
 
+st.success(
+            "🔒 This case has met escalation criteria and is ready for attorney review."
+        )
+``
+
+def generate_attorney_summary(state):
+    """
+    Produces a structured, attorney-ready case summary.
+    No legal advice. Fact-based only.
+    """
+
+    prompt = f"""
+You are the ZAP Attorney Preparation Agent.
+
+You assist by organizing check fraud cases
+for efficient attorney review.
+
+DO NOT:
+- Provide legal advice
+- Suggest legal strategy
+- Make liability determinations
+
+DO:
+- Summarize facts clearly and neutrally
+- Organize information chronologically
+- Identify evidence collected
+- Call out remaining gaps or questions
+
+Case intake and investigation state:
+{state}
+
+Respond using the following structure:
+
+1. Case Overview
+2. Key Facts (Chronological)
+3. Parties Involved
+4. Evidence Collected
+5. Outstanding Gaps or Questions
+6. Reason for Escalation
+"""
+
+    response = openai.ChatCompletion.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": prompt}
+        ],
+        temperature=0.1,
+    )
+
+    return response.choices[0].message["content"]
+
 st.title("ZAP Check Fraud Intake AI Agent")
 
 # Initialize case state (this makes it an AGENT, not a chatbot)
@@ -157,3 +208,15 @@ st.subheader("AI Agent Guidance")
 
     with st.container(border=True):
     st.write(ai_response)
+
+if st.session_state.case_state["escalation_ready"]:
+        st.divider()
+        st.subheader("Attorney Escalation Package")
+
+        attorney_summary = generate_attorney_summary(
+            st.session_state.case_state
+        )
+
+        with st.container(border=True):
+            st.write(attorney_summary)
+``
