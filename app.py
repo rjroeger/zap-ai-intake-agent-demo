@@ -1,33 +1,37 @@
 import streamlit as st
 import openai
+from datetime import date
 
 # ======================================================
-# CONFIGURATION
+# CONFIG
 # ======================================================
 
 openai.api_key = st.secrets.get("OPENAI_API_KEY", "")
 
 st.set_page_config(
-    page_title="ZAP Check Fraud Intake AI Agent",
+    page_title="Check Fraud Intake AI Agent",
     layout="centered",
 )
 
 # ======================================================
-# SESSION STATE INITIALIZATION
+# SESSION STATE
 # ======================================================
 
-if "case_state" not in st.session_state:
-    st.session_state.case_state = {
-        "original_check_amount": 0,
-        "original_check_number": "",
-        "original_payee": "",
-        "fraudlent_check_amount": 0,
-        "fraudulent_check_number": "",
-        "fraudulent_payee": "",
-        "customer_affidavit": False,
-        "check_image": False,
-        "missing_items": [],
-        "escalation_ready": False,
+if "case" not in st.session_state:
+    st.session_state.case = {
+        "case_id": "",
+        "open_date": date.today(),
+        "customer_name": "",
+        "account_number": "",
+        "customer_contact": "",
+        "original_check": {},
+        "fraud_check": {},
+        "fraud_type": "",
+        "timeline": {},
+        "attestation": {},
+        "financials": {},
+        "documents": {},
+        "escalation_flags": {},
         "ai_followups": {},
     }
 
@@ -37,256 +41,227 @@ if "ai_step" not in st.session_state:
 if "human_decision" not in st.session_state:
     st.session_state.human_decision = None
 
-
 # ======================================================
-# CORE INTAKE LOGIC
-# ======================================================
-
-def evaluate_intake(state):
-    required_fields = {
-        "origial_check_amount": "Original check amount is required",
-        "original_check_number": "Original check number is required",
-        "original_payee": "Original payee name is required",
-        "fraudulent_check_amount": "Fraudulent check amount is required",
-        "fraudulent_check_number": "Fraudulent check number is required",
-        "fraudulent_payee": "Fraudulent payee name is required",
-        "customer_affidavit": "Customer affidavit has not been received",
-        "check_image": "Check image has not been uploaded",
-    }
-
-    missing_items = []
-    for field, message in required_fields.items():
-        if state.get(field) in [None, "", False]:
-            missing_items.append(message)
-
-    state["missing_items"] = missing_items
-    state["escalation_ready"] = (not missing_items) and (state[""] >= 10000)
-    return state
-
-
-# ======================================================
-# AI FUNCTIONS — STEP 1: FOLLOW-UP QUESTIONS
+# AI FUNCTIONS
 # ======================================================
 
-def ai_generate_followups(state):
-    try:
-        prompt = f"""
-You are a fraud intake AI assistant.
+def ai_followup_questions(case):
+    prompt = f"""
+You are a check fraud intake AI.
 
-Based on the case below, identify the MOST important follow-up questions
-a human investigator should answer next.
+Based on the intake below, generate the MOST important follow‑up questions
+needed to assess fraud liability and escalation.
 
 Rules:
-- Return 3–6 questions
-- One question per line
+- 3–6 questions
+- One per line
 - No explanations
-- No numbering
 
-Case:
-{state}
+Intake:
+{case}
 """
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.2,
-        )
-        return response.choices[0].message["content"]
+    resp = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.2,
+    )
+    return resp.choices[0].message["content"]
 
-    except Exception as e:
-        return f"OpenAI error: {e}"
-
-
-# ======================================================
-# AI FUNCTIONS — STEP 2: REASSESSMENT
-# ======================================================
-
-def ai_reassess_risk(state):
-    try:
-        prompt = f"""
+def ai_reassess(case):
+    prompt = f"""
 You are a fraud risk analysis AI.
 
-Using the intake details and investigator responses below, provide:
+Using the intake and investigator answers, provide:
 
-1. A short risk summary (2–3 sentences)
-2. Key remaining risk indicators (bullets)
-3. Whether escalation SHOULD BE CONSIDERED (yes/no)
-4. Estimated fraud risk confidence (0–100%)
+1. Short risk summary (2–3 sentences)
+2. Key risk indicators (bullets)
+3. Applicable warranty theory
+4. Escalation should be considered? (yes/no)
+5. Estimated fraud risk confidence (0–100%)
 
 Case:
-{state}
-
-Investigator responses:
-{state.get("ai_followups", {})}
+{case}
 """
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.2,
-        )
-        return response.choices[0].message["content"]
+    resp = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.2,
+    )
+    return resp.choices[0].message["content"]
 
-    except Exception as e:
-        return f"OpenAI error: {e}"
-
-
-# ======================================================
-# AI FUNCTIONS — STEP 3: ATTORNEY ESCALATION SUMMARY
-# ======================================================
-
-def ai_generate_attorney_summary(state):
-    try:
-        prompt = f"""
-You are preparing a concise escalation summary for an attorney.
+def ai_attorney_summary(case):
+    prompt = f"""
+Prepare a neutral, attorney‑ready check fraud escalation summary.
 
 Rules:
-- One page or less
-- Neutral, factual tone
+- One page max
+- Factual tone only
 - No speculation
 - Clear headings and bullets
-- Assume attorney audience
 
 Include:
 - Case overview
+- Banks involved
+- Fraud type & applicable warranty
 - Key risk indicators
 - Outstanding items
-- AI risk assessment
-- Human escalation decision
+- Financial exposure
+- Recommended next action
 
-Case details:
-{state}
+Case:
+{case}
 """
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.1,
-        )
-        return response.choices[0].message["content"]
-
-    except Exception as e:
-        return f"OpenAI error: {e}"
-
+    resp = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.1,
+    )
+    return resp.choices[0].message["content"]
 
 # ======================================================
-# UI — INTAKE FORM
+# UI — INTAKE
 # ======================================================
 
-st.title("ZAP Check Fraud Intake AI Agent")
-st.subheader("Fraud Intake")
+st.title("Check Fraud Intake AI Agent")
 
-st.session_state.case_state["original_check_amount"] = st.number_input(
-    "Original Check Amount ($)", min_value=0
+st.subheader("1. Case & Customer")
+
+st.session_state.case["case_id"] = st.text_input("Internal Case / Claim ID")
+st.session_state.case["open_date"] = st.date_input("Intake Open Date")
+st.session_state.case["customer_name"] = st.text_input("Customer Name")
+st.session_state.case["account_number"] = st.text_input("Customer Account Number")
+st.session_state.case["customer_contact"] = st.text_input("Customer Contact (Email or Phone)")
+
+st.subheader("2. Check at Issue — Original")
+
+st.session_state.case["original_check"] = {
+    "check_number": st.text_input("Check Number"),
+    "issue_date": st.date_input("Issue Date"),
+    "payee": st.text_input("Payee Name"),
+    "amount": st.number_input("Amount", min_value=0.0),
+}
+
+st.subheader("3. Fraudulent Presentment")
+
+st.session_state.case["fraud_check"] = {
+    "date_negotiated": st.date_input("Date Negotiated"),
+    "presented_payee": st.text_input("Fraudulent Payee (if different)"),
+    "amount_presented": st.number_input("Amount Presented", min_value=0.0),
+    "bofd": st.text_input("Bank of First Deposit (BOFD)"),
+    "bofd_rtn": st.text_input("BOFD Routing Number"),
+    "payor_bank": st.text_input("Payor Bank"),
+    "deposit_method": st.selectbox(
+        "Deposit Method",
+        ["Branch", "ATM", "Mobile", "Remote Capture"]
+    ),
+}
+
+st.subheader("4. Fraud Type")
+
+st.session_state.case["fraud_type"] = st.radio(
+    "Primary Fraud Classification",
+    [
+        "Altered Payee / Amount",
+        "Forged Maker Signature",
+        "Forged Endorsement",
+        "Counterfeit Check",
+        "Duplicate Presentment",
+        "Other",
+    ]
 )
-st.session_state.case_state["original_check_number"] = st.text_input("Original Check Number")
-st.session_state.case_state["original payee"] = st.text_input("Original Payee Name")
-st.session_state.case_state["fraudulent check_amount"] = st.number_input(
-    "Fraudulent Check Amount ($)", min_value=0
-)
-st.session_state.case_state["fraduluent_check_number"] = st.text_input("Fraudulent Check Number")
-st.session_state.case_state["fraudulent_payee"] = st.text_input("Fraudulent Payee Name")
-st.session_state.case_state["customer_affidavit"] = st.checkbox(
-    "Customer Affidavit Received"
-)
-st.session_state.case_state["check_image"] = st.checkbox(
-    "Check Image Uploaded"
-)
+
+st.subheader("5. Timeline")
+
+st.session_state.case["timeline"] = {
+    "customer_notice_date": st.date_input("Date Customer Notified Bank"),
+    "claim_sent_date": st.date_input("Date Claim Sent to BOFD"),
+    "bofd_response": st.selectbox("BOFD Response", ["Pending", "Accepted", "Denied"]),
+    "bofd_response_date": st.date_input("BOFD Response Date"),
+}
+
+st.subheader("6. Customer Attestation")
+
+st.session_state.case["attestation"] = {
+    "affidavit_received": st.checkbox("Customer Fraud Affidavit Received"),
+    "date_received": st.date_input("Date Received"),
+    "customer_statement": st.text_area(
+        "Customer Statement (Brief Narrative)",
+        height=80
+    ),
+}
+
+st.subheader("7. Financial Exposure")
+
+st.session_state.case["financials"] = {
+    "total_fraud_amount": st.number_input("Total Fraud Amount", min_value=0.0),
+    "provisional_credit": st.checkbox("Provisional Credit Issued"),
+    "final_customer_impact": st.text_input("Final Customer Impact"),
+}
+
+st.subheader("8. Documentation Flags")
+
+st.session_state.case["documents"] = {
+    "check_images": st.checkbox("Check Image(s)"),
+    "deposit_evidence": st.checkbox("Deposit Evidence"),
+    "affidavit": st.checkbox("Customer Affidavit"),
+    "signature_card": st.checkbox("Signature Card / Prior Signature"),
+    "bofd_correspondence": st.checkbox("BOFD Correspondence"),
+}
+
+st.subheader("9. Escalation Signals")
+
+st.session_state.case["escalation_flags"] = {
+    "escalation_required": st.selectbox(
+        "Escalation Required",
+        ["None", "Legal", "Compliance"]
+    ),
+    "sar_flag": st.checkbox("SAR Filed or Required"),
+}
 
 st.divider()
 
 # ======================================================
-# INTAKE EVALUATION
+# AI AGENT FLOW
 # ======================================================
 
-if st.button("Evaluate Intake"):
-    st.session_state.case_state = evaluate_intake(
-        st.session_state.case_state
-    )
+if st.button("Run AI Intake Review"):
     st.session_state.ai_step = 1
 
-if st.session_state.case_state.get("missing_items"):
-    st.error("Missing or incomplete intake items:")
-    for item in st.session_state.case_state["missing_items"]:
-        st.write(f"- {item}")
-elif st.session_state.ai_step > 0:
-    st.success("Initial intake complete.")
-
-# ======================================================
-# AI AGENT — STEP 1: FOLLOW-UPS
-# ======================================================
-
 if st.session_state.ai_step == 1:
-    st.divider()
-    st.subheader("AI Agent Guidance — Follow-Up Questions")
+    st.subheader("AI Follow‑Up Questions")
 
-    questions_text = ai_generate_followups(st.session_state.case_state)
-    questions = questions_text.split("\n")
-
-    for idx, q in enumerate(questions):
+    qs = ai_followup_questions(st.session_state.case).split("\n")
+    for i, q in enumerate(qs):
         if q.strip():
-            st.session_state.case_state["ai_followups"][q] = st.radio(
-                q,
-                ["Unknown", "Yes", "No"],
-                key=f"followup_{idx}"
+            st.session_state.case["ai_followups"][q] = st.radio(
+                q, ["Unknown", "Yes", "No"], key=f"f_{i}"
             )
 
     if st.button("Submit Responses"):
         st.session_state.ai_step = 2
 
-# ======================================================
-# AI AGENT — STEP 2: REASSESSMENT + DECISION
-# ======================================================
-
 elif st.session_state.ai_step == 2:
-    st.divider()
-    st.subheader("AI Agent Assessment")
+    st.subheader("AI Risk Assessment")
+    st.write(ai_reassess(st.session_state.case))
 
-    assessment = ai_reassess_risk(st.session_state.case_state)
-    st.write(assessment)
-
-    with st.expander("Why the AI flagged this"):
-        st.write(
-            "The AI assessment reflects check amount, payee risk, documentation status, "
-            "and investigator-confirmed responses."
-        )
-
-    st.divider()
-    st.subheader("Human Decision Required")
-
+    st.subheader("Human Decision")
     st.session_state.human_decision = st.radio(
-        "Select next action",
-        ["Hold for more information", "Escalate to attorney", "Close intake"]
+        "Next Action",
+        ["Hold", "Escalate to Attorney", "Close"]
     )
 
-    if st.button("Finalize Decision"):
+    if st.button("Finalize"):
         st.session_state.ai_step = 3
 
-# ======================================================
-# AI AGENT — STEP 3: FINAL OUTCOME + ATTORNEY SUMMARY
-# ======================================================
-
 elif st.session_state.ai_step == 3:
-    st.divider()
     st.subheader("Final Outcome")
 
-    st.success("✅ Decision Recorded")
-    st.write("**Final Determination:**")
-    st.write(st.session_state.human_decision)
-
-    if st.session_state.human_decision == "Escalate to attorney":
-        st.divider()
+    if st.session_state.human_decision == "Escalate to Attorney":
         st.subheader("Attorney Escalation Summary")
-
-        summary = ai_generate_attorney_summary(
-            st.session_state.case_state
-        )
-        st.write(summary)
-
-        st.caption(
-            "This summary is AI‑generated for attorney review only. "
-            "It is decision support and must be independently verified."
-        )
+        st.write(ai_attorney_summary(st.session_state.case))
     else:
-        st.info("No attorney escalation summary generated.")
+        st.info("No attorney escalation generated.")
 
     st.caption(
-        "Note: AI provides decision support only. Final determinations are human-made."
+        "AI provides decision support only. All determinations are human‑made."
     )
