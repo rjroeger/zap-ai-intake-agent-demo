@@ -18,9 +18,12 @@ st.set_page_config(
 
 if "case_state" not in st.session_state:
     st.session_state.case_state = {
-        "check_amount": 0,
-        "check_number": "",
-        "payee": "",
+        "original_check_amount": 0,
+        "original_check_number": "",
+        "original_payee": "",
+        "fraudlent_check_amount": 0,
+        "fraudulent_check_number": "",
+        "fraudulent_payee": "",
         "customer_affidavit": False,
         "check_image": False,
         "missing_items": [],
@@ -57,7 +60,7 @@ def evaluate_intake(state):
             missing_items.append(message)
 
     state["missing_items"] = missing_items
-    state["escalation_ready"] = (not missing_items) and (state["check_amount"] >= 10000)
+    state["escalation_ready"] = (not missing_items) and (state[""] >= 10000)
     return state
 
 
@@ -170,11 +173,16 @@ Case details:
 st.title("ZAP Check Fraud Intake AI Agent")
 st.subheader("Fraud Intake")
 
-st.session_state.case_state["check_amount"] = st.number_input(
-    "Check Amount ($)", min_value=0
+st.session_state.case_state["original_check_amount"] = st.number_input(
+    "Original Check Amount ($)", min_value=0
 )
-st.session_state.case_state["check_number"] = st.text_input("Check Number")
-st.session_state.case_state["payee"] = st.text_input("Payee Name")
+st.session_state.case_state["original_check_number"] = st.text_input("Original Check Number")
+st.session_state.case_state["original payee"] = st.text_input("Original Payee Name")
+st.session_state.case_state["fraudulent check_amount"] = st.number_input(
+    "Fraudulent Check Amount ($)", min_value=0
+)
+st.session_state.case_state["fraduluent_check_number"] = st.text_input("Fraudulent Check Number")
+st.session_state.case_state["fraudulent_payee"] = st.text_input("Fraudulent Payee Name")
 st.session_state.case_state["customer_affidavit"] = st.checkbox(
     "Customer Affidavit Received"
 )
