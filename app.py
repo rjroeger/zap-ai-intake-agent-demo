@@ -47,15 +47,19 @@ if "human_decision" not in st.session_state:
 
 def ai_followup_questions(case):
     prompt = f"""
-You are a check fraud intake AI.
+You are an AI assisting a check fraud intake team.
 
-Based on the intake below, generate the MOST important follow‑up questions
-needed to assess fraud liability and escalation.
+Your role is NOT to restate intake facts, but to identify
+risk indicators that affect whether this case should proceed
+through standard recovery processes or receive early legal review.
 
-Rules:
-- 3–6 questions
-- One per line
-- No explanations
+Focus on:
+- recovery risk
+- timing risk
+- evidentiary sufficiency
+- case complexity
+
+Ask only questions that materially affect that determination
 
 Intake:
 {case}
