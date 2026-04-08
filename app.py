@@ -169,31 +169,88 @@ st.subheader("4. Fraud Characterization (Guided)")
 
 fraud_facts = {}
 
-fraud_facts["altered"] = st.radio(
+# --------------------------------------------------
+# Question Set A — Alteration
+# --------------------------------------------------
+
+fraud_facts["altered_check"] = st.radio(
     "Does the check appear to have been altered after issuance?",
     ["Yes", "No", "Unknown"]
 )
 
+if fraud_facts["altered_check"] == "Yes":
+    fraud_facts["alteration_details"] = st.multiselect(
+        "If yes, what appears to have been altered?",
+        ["Payee Name", "Amount", "Both"]
+    )
+
+# --------------------------------------------------
+# Question Set B — Maker Signature
+# --------------------------------------------------
+
 fraud_facts["signature_authorized"] = st.radio(
-    "Is the drawer/maker signature believed to be authorized?",
+    "Is the drawer/maker signature believed to be authorized by the customer?",
     ["Yes", "No", "Unknown"]
 )
+
+# --------------------------------------------------
+# Question Set C — Endorsement
+# --------------------------------------------------
 
 fraud_facts["endorsement_authorized"] = st.radio(
     "Is the payee endorsement believed to be authorized?",
     ["Yes", "No", "Unknown"]
 )
 
-fraud_facts["legitimate_check"] = st.radio(
+if fraud_facts["endorsement_authorized"] == "No":
+    fraud_facts["endorsement_issues"] = st.multiselect(
+        "If no, which best describes the endorsement issue?",
+        [
+            "Missing endorsement",
+            "Third-party endorsement",
+            "Endorsement does not match payee"
+        ]
+    )
+
+# --------------------------------------------------
+# Question Set D — Instrument Authenticity
+# --------------------------------------------------
+
+fraud_facts["legitimate_instrument"] = st.radio(
     "Is this believed to be a legitimate check issued by the customer?",
     ["Yes", "No", "Unknown"]
 )
 
-fraud_facts["duplicate_paid"] = st.radio(
+if fraud_facts["legitimate_instrument"] == "No":
+    fraud_facts["counterfeit_indicators"] = st.multiselect(
+        "If no, what indicators are present?",
+        [
+            "Customer denies issuing the check",
+            "Check stock unfamiliar",
+            "MICR line inconsistent",
+            "Check number does not align with sequence"
+        ]
+    )
+
+# --------------------------------------------------
+# Question Set E — Duplicate Presentment
+# --------------------------------------------------
+
+fraud_facts["duplicate_presentment"] = st.radio(
     "Has this check number already been paid previously?",
     ["Yes", "No", "Unknown"]
 )
 
+# --------------------------------------------------
+# Question Set F — Multiple Issues Acknowledgment
+# --------------------------------------------------
+
+fraud_facts["multiple_issues"] = st.radio(
+    "Do multiple issues appear to apply to this check?",
+    ["Yes", "No", "Unsure"]
+)
+
+# Save to case
 st.session_state.case["fraud_facts"] = fraud_facts
 
 st.subheader("5. Timeline")
