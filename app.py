@@ -71,6 +71,15 @@ def ai_reassess(case):
     prompt = f"""
 You are a fraud risk analysis AI.
 
+Your task is to REASSESS the case after human responses
+and determine the correct fraud classification and escalation posture.
+
+Important rules:
+- The fraud characterization responses may indicate multiple issues.
+- Select ONE primary fraud classification.
+- List any secondary indicators separately.
+- Prioritize classification consistency for UCC warranty analysis.
+
 Using the intake and investigator answers, provide:
 
 1. Short risk summary (2–3 sentences)
@@ -156,19 +165,37 @@ st.session_state.case["fraud_check"] = {
     ),
 }
 
-st.subheader("4. Fraud Type")
+st.subheader("4. Fraud Characterization (Guided)")
 
-st.session_state.case["fraud_type"] = st.radio(
-    "Primary Fraud Classification",
-    [
-        "Altered Payee / Amount",
-        "Forged Maker Signature",
-        "Forged Endorsement",
-        "Counterfeit Check",
-        "Duplicate Presentment",
-        "Other",
-    ]
+fraud_facts = {}
+
+fraud_facts["altered"] = st.radio(
+    "Does the check appear to have been altered after issuance?",
+    ["Yes", "No", "Unknown"]
 )
+
+fraud_facts["signature_authorized"] = st.radio(
+    "Is the drawer/maker signature believed to be authorized?",
+    ["Yes", "No", "Unknown"]
+)
+
+fraud_facts["endorsement_authorized"] = st.radio(
+    "Is the payee endorsement believed to be authorized?",
+    ["Yes", "No", "Unknown"]
+)
+
+fraud_facts["legitimate_check"] = st.radio(
+    "Is this believed to be a legitimate check issued by the customer?",
+    ["Yes", "No", "Unknown"]
+)
+
+fraud_facts["duplicate_paid"] = st.radio(
+    "Has this check number already been paid previously?",
+    ["Yes", "No", "Unknown"]
+)
+
+st.session_state.case["fraud_facts"] = fraud_facts
+}
 
 st.subheader("5. Timeline")
 
