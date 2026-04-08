@@ -41,9 +41,12 @@ if "human_decision" not in st.session_state:
 
 def evaluate_intake(state):
     required_fields = {
-        "check_amount": "Check amount is required",
-        "check_number": "Check number is required",
-        "payee": "Payee name is required",
+        "origial_check_amount": "Original check amount is required",
+        "original_check_number": "Original check number is required",
+        "original_payee": "Original payee name is required",
+        "fraudulent_check_amount": "Fraudulent check amount is required",
+        "fraudulent_check_number": "Fraudulent check number is required",
+        "fraudulent_payee": "Fraudulent payee name is required",
         "customer_affidavit": "Customer affidavit has not been received",
         "check_image": "Check image has not been uploaded",
     }
