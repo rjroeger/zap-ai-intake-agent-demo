@@ -195,7 +195,6 @@ fraud_facts["duplicate_paid"] = st.radio(
 )
 
 st.session_state.case["fraud_facts"] = fraud_facts
-}
 
 st.subheader("5. Timeline")
 
